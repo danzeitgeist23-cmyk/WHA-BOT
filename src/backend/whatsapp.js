@@ -288,8 +288,15 @@ function attachEvents(c) {
     send('whatsapp:ack', { id: msg.id._serialized, ack });
   });
 
-  c.on('message_create', (msg) => {
+  c.on('message_create', async (msg) => {
     if (msg.fromMe) {
+      let media = null, mimetype = null;
+      if (msg.hasMedia) {
+        try {
+          const m = await msg.downloadMedia();
+          if (m) { media = m.data; mimetype = m.mimetype; }
+        } catch { /* ignorar */ }
+      }
       send('whatsapp:message-sent', {
         id:        msg.id._serialized,
         to:        msg.to,
@@ -297,6 +304,10 @@ function attachEvents(c) {
         timestamp: msg.timestamp,
         fromMe:    true,
         ack:       msg.ack,
+        type:      msg.type,
+        hasMedia:  msg.hasMedia,
+        media,
+        mimetype,
       });
     }
   });
@@ -499,22 +510,48 @@ async function search(query) {
     }));
 }
 
-/** Obtener info de contacto */
+/** Obtener info de contacto (completa) */
 async function getContactInfo(contactId) {
   if (!client) throw new Error('Cliente no inicializado');
   try {
     const contact = await client.getContactById(contactId);
     const pic     = await contact.getProfilePicUrl().catch(() => null);
+
+    let groupInfo = null;
+    if (contactId.endsWith('@g.us')) {
+      try {
+        const chat = await client.getChatById(contactId);
+        groupInfo = {
+          participants:  chat.participants?.length || 0,
+          description:   chat.description || '',
+        };
+      } catch {}
+    }
+
     return {
-      id:         contact.id._serialized,
-      name:       contact.name || contact.pushname || contact.number,
-      number:     contact.number,
-      about:      contact.about || '',
-      pic:        pic || null,
-      isBusiness: contact.isBusiness || false,
+      id:          contact.id._serialized,
+      name:        contact.name || contact.pushname || contact.number,
+      pushname:    contact.pushname || '',
+      number:      contact.number,
+      about:       contact.about || '',
+      pic:         pic || null,
+      isBusiness:  contact.isBusiness || false,
+      isGroup:     contactId.endsWith('@g.us'),
+      groupInfo,
     };
   } catch (e) {
     return { id: contactId, name: contactId, number: '', about: '', pic: null };
+  }
+}
+
+/** Obtener foto de perfil de un contacto */
+async function getProfilePic(contactId) {
+  if (!client) throw new Error('Cliente no inicializado');
+  try {
+    const contact = await client.getContactById(contactId);
+    return await contact.getProfilePicUrl().catch(() => null);
+  } catch {
+    return null;
   }
 }
 
@@ -549,6 +586,7 @@ module.exports = {
   getMessages,
   search,
   getContactInfo,
+  getProfilePic,
   getMedia,
   deleteMessage,
 };

@@ -313,6 +313,15 @@ function registerIPC() {
   });
 
   // ── Contactos ─────────────────────────────────────────────────────────────
+  ipcMain.handle('get-profile-pic', async (_, { contactId }) => {
+    try {
+      const pic = await whatsapp.getProfilePic(contactId);
+      return { success: true, data: pic };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('get-contact-info', async (_, { contactId }) => {
     try {
       const info = await whatsapp.getContactInfo(contactId);

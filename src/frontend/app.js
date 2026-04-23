@@ -32,6 +32,7 @@ const State = {
   audioChunks:     [],
   lightboxData:    null,   // { base64, mimetype }
   config:          {},
+  profilePics:     {},     // { [chatId]: url } cache de fotos de perfil
 };
 
 // ── $(id) shorthand ──────────────────────────────────────────────────────────
@@ -61,7 +62,49 @@ async function init() {
   api.on('wa:log',              onWALog);
 
   buildEmojiPicker();
+  initDragDrop();
   setStatus('En espera...', false);
+}
+
+// ── Drag & Drop de archivos ──────────────────────────────────────────────────
+function initDragDrop() {
+  const chatPanel = document.getElementById('chat-panel');
+  if (!chatPanel) return;
+
+  chatPanel.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!State.currentChat) return;
+    $('drag-overlay').classList.remove('hidden');
+  });
+
+  chatPanel.addEventListener('dragleave', (e) => {
+    if (!chatPanel.contains(e.relatedTarget)) {
+      $('drag-overlay').classList.add('hidden');
+    }
+  });
+
+  chatPanel.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    $('drag-overlay').classList.add('hidden');
+    if (!State.currentChat) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+
+    for (const file of files) {
+      const filePath = file.path; // Electron expone .path en File
+      if (!filePath) continue;
+      showToast(`Enviando ${file.name}...`, 'info');
+      const caption = $('message-input').value.trim();
+      const res = await api.sendMedia(State.currentChat.id, filePath, caption);
+      if (res.success) {
+        $('message-input').value = '';
+        showToast(`✓ ${file.name} enviado`, 'success');
+      } else {
+        showToast(`Error al enviar ${file.name}: ${res.error || ''}`, 'error');
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -194,6 +237,33 @@ async function loadChats() {
   if (!res.success) return;
   State.chats = res.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   renderChatList();
+  loadProfilePicsLazy();
+}
+
+async function loadProfilePicsLazy() {
+  for (const chat of State.chats.slice(0, 40)) {
+    if (State.profilePics[chat.id]) continue;
+    try {
+      const res = await api.getProfilePic(chat.id);
+      if (res.success && res.data) {
+        State.profilePics[chat.id] = res.data;
+        const el = document.querySelector(`.chat-item[data-id="${CSS.escape(chat.id)}"] .avatar`);
+        if (el) setAvatarImg(el, res.data, chat.name);
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, 120)); // evitar rate-limit
+  }
+}
+
+function setAvatarImg(el, url, name) {
+  el.style.overflow = 'hidden';
+  el.style.padding  = '0';
+  const img = document.createElement('img');
+  img.className = 'avatar-img';
+  img.src = url;
+  img.onerror = () => { el.style.overflow = ''; el.textContent = getInitials(name); };
+  el.innerHTML = '';
+  el.appendChild(img);
 }
 
 function renderChatList() {
@@ -225,10 +295,14 @@ function renderChatList() {
       ? `<span class="unread-badge">${c.unreadCount > 99 ? '99+' : c.unreadCount}</span>` : '';
     const initials  = getInitials(c.name);
     const groupIcon = c.isGroup ? '👥 ' : '';
+    const picUrl    = State.profilePics[c.id];
+    const avatarContent = picUrl
+      ? `<img src="${picUrl}" class="avatar-img" onerror="this.style.display='none'">`
+      : initials;
 
     return `
       <div class="chat-item ${isActive ? 'active' : ''}" data-id="${esc(c.id)}" onclick="App.openChat('${esc(c.id)}')">
-        <div class="avatar">${initials}</div>
+        <div class="avatar" style="${picUrl ? 'overflow:hidden;padding:0' : ''}">${avatarContent}</div>
         <div class="chat-item-info">
           <div class="chat-item-top">
             <span class="chat-item-name">${groupIcon}${esc(c.name)}</span>
@@ -318,7 +392,21 @@ async function openChat(chatId) {
   $('input-bar').classList.remove('hidden');
   $('chat-name').textContent = chat.name;
   $('chat-subtitle').textContent = chat.isGroup ? 'Grupo' : 'click para ver info';
-  $('chat-avatar').textContent = getInitials(chat.name);
+  const cachedPic = State.profilePics[chatId];
+  if (cachedPic) {
+    setAvatarImg($('chat-avatar'), cachedPic, chat.name);
+  } else {
+    $('chat-avatar').style.overflow = '';
+    $('chat-avatar').textContent = getInitials(chat.name);
+    api.getProfilePic(chatId).then(res => {
+      if (res.success && res.data) {
+        State.profilePics[chatId] = res.data;
+        setAvatarImg($('chat-avatar'), res.data, chat.name);
+        const el = document.querySelector(`.chat-item[data-id="${CSS.escape(chatId)}"] .avatar`);
+        if (el) setAvatarImg(el, res.data, chat.name);
+      }
+    }).catch(() => {});
+  }
 
   renderChatList(); // Marcar activo
   clearQuote();
@@ -352,6 +440,12 @@ function renderMessages(chatId) {
   wrap.querySelectorAll('.bubble-wrap').forEach(el => {
     el.addEventListener('contextmenu', e => showCtxMenu(e, el.dataset.id, el.dataset.fromme === 'true'));
   });
+
+  // Auto-cargar media pendiente (imágenes, audio, vídeo, docs) — máx 10 a la vez
+  const mediaTypes = ['image', 'audio', 'ptt', 'video', 'document', 'sticker'];
+  msgs.filter(m => m.hasMedia && !m.media && mediaTypes.includes(m.type))
+      .slice(0, 10)
+      .forEach((m, i) => setTimeout(() => loadMedia(m.id).catch(() => {}), i * 300));
 }
 
 function buildBubble(msg, isGroup = false) {
@@ -826,23 +920,53 @@ async function openContactPanel() {
   const panel = $('contact-panel');
   panel.classList.remove('hidden');
 
+  // Estado inicial mientras carga
   $('contact-info-name').textContent   = State.currentChat.name;
-  $('contact-info-number').textContent = State.currentChat.id;
+  $('contact-info-number').textContent = '...';
+  $('contact-info-about').textContent  = '';
+  $('contact-info-extra').innerHTML    = '<div class="contact-loading">Cargando info...</div>';
   $('contact-pic').textContent         = getInitials(State.currentChat.name);
+  $('contact-pic').style.overflow      = '';
 
   const res = await api.getContactInfo(State.currentChat.id);
-  if (res.success) {
-    const c = res.data;
-    $('contact-info-name').textContent   = c.name || State.currentChat.name;
-    $('contact-info-number').textContent = c.number ? '+' + c.number : '';
-    $('contact-info-about').textContent  = c.about || '';
-    if (c.pic) {
-      const img = document.createElement('img');
-      img.src       = c.pic;
-      img.className = 'contact-big-avatar-img';
-      $('contact-pic').innerHTML = '';
-      $('contact-pic').appendChild(img);
+  if (!res.success) {
+    $('contact-info-number').textContent = State.currentChat.id;
+    $('contact-info-extra').innerHTML = '';
+    return;
+  }
+
+  const c = res.data;
+  $('contact-info-name').textContent   = c.name || State.currentChat.name;
+  $('contact-info-number').textContent = c.number ? '+' + c.number : State.currentChat.id;
+  $('contact-info-about').textContent  = c.about || '';
+
+  // Info extra
+  const extra = [];
+  if (c.isBusiness) extra.push('<span class="badge-business">🏢 Cuenta Business</span>');
+  if (c.pushname && c.pushname !== c.name) {
+    extra.push(`<div class="contact-extra-row"><span class="contact-extra-label">Nombre push</span><span>${esc(c.pushname)}</span></div>`);
+  }
+  if (c.isGroup && c.groupInfo) {
+    extra.push(`<div class="contact-extra-row"><span class="contact-extra-label">Participantes</span><span>${c.groupInfo.participants}</span></div>`);
+    if (c.groupInfo.description) {
+      extra.push(`<div class="contact-extra-row contact-extra-desc"><span class="contact-extra-label">Descripción</span><span>${esc(c.groupInfo.description)}</span></div>`);
     }
+  }
+  if (c.number) {
+    extra.push(`<button class="btn-ghost btn-sm contact-copy-btn" onclick="navigator.clipboard.writeText('+${c.number}');showToast('Número copiado','success')">📋 Copiar número</button>`);
+  }
+  $('contact-info-extra').innerHTML = extra.join('');
+
+  // Foto de perfil
+  if (c.pic) {
+    const img = document.createElement('img');
+    img.src       = c.pic;
+    img.className = 'contact-big-avatar-img';
+    img.onerror   = () => { $('contact-pic').textContent = getInitials(c.name || State.currentChat.name); $('contact-pic').style.overflow = ''; };
+    $('contact-pic').style.overflow = 'hidden';
+    $('contact-pic').innerHTML = '';
+    $('contact-pic').appendChild(img);
+    State.profilePics[State.currentChat.id] = c.pic;
   }
 }
 
@@ -1333,6 +1457,9 @@ function extractVarsFromBody(body) {
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPOSICIÓN PÚBLICA (window.App)
 // ═══════════════════════════════════════════════════════════════════════════
+// Exponer showToast globalmente para uso en onclick inline del HTML
+window.showToast = showToast;
+
 window.App = {
   connectWA, toggleForceChromium, toggleDebug, retryQR, disconnect, clearSession,
   openChat, sendMessage, onInputKeydown, onInputChange, onPaste, cancelPaste, sendPastedImage,

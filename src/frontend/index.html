@@ -152,6 +152,17 @@
   <!-- ── PANEL DE CHAT ──────────────────────────────────────────── -->
   <main class="chat-panel" id="chat-panel">
 
+    <!-- Overlay Drag & Drop -->
+    <div id="drag-overlay" class="drag-overlay hidden">
+      <div class="drag-overlay-inner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="56" height="56">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p>Suelta para enviar</p>
+      </div>
+    </div>
+
     <!-- Estado vacío -->
     <div id="chat-empty" class="chat-empty">
       <svg viewBox="0 0 24 24" fill="currentColor" width="80" height="80" opacity="0.15">
@@ -289,6 +300,7 @@
       <div id="contact-info-name" class="contact-info-name">—</div>
       <div id="contact-info-number" class="contact-info-number">—</div>
       <div id="contact-info-about" class="contact-info-about"></div>
+      <div id="contact-info-extra" class="contact-info-extra"></div>
       <div class="contact-actions">
         <button class="btn-ghost" onclick="App.exportConversation()">
           Exportar conversación

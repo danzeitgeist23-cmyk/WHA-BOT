@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('thwhats', {
 
   // ── Contactos ─────────────────────────────────────────────────────────
   getContactInfo: (contactId) => ipcRenderer.invoke('get-contact-info', { contactId }),
+  getProfilePic:  (contactId) => ipcRenderer.invoke('get-profile-pic',  { contactId }),
 
   // ── Programación ──────────────────────────────────────────────────────
   scheduleMessage:   (opts) => ipcRenderer.invoke('schedule-message',  opts),

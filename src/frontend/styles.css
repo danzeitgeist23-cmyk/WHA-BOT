@@ -1191,3 +1191,95 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   color: var(--text-muted);
   font-size: 13px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAG & DROP OVERLAY
+   ═══════════════════════════════════════════════════════════════ */
+.drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 168, 132, 0.18);
+  border: 3px dashed var(--accent);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+.drag-overlay.hidden { display: none; }
+.drag-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--accent);
+}
+.drag-overlay-inner svg { opacity: 0.9; }
+.drag-overlay-inner p {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AVATAR CON IMAGEN
+   ═══════════════════════════════════════════════════════════════ */
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTACT PANEL — INFO EXTRA
+   ═══════════════════════════════════════════════════════════════ */
+.contact-info-extra {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.contact-loading {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+}
+.badge-business {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  align-self: center;
+}
+.contact-extra-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.contact-extra-desc { flex-direction: column; }
+.contact-extra-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.contact-copy-btn {
+  width: 100%;
+  margin-top: 4px;
+  justify-content: center;
+}
