@@ -229,6 +229,8 @@ function registerIPC() {
         .sort((a, b) => a.timestamp - b.timestamp);
       return { success: true, data: merged };
     } catch (e) {
+      const fs2 = require('fs');
+      fs2.appendFileSync('/tmp/wha-errors.log', `[get-messages][${new Date().toISOString()}] chatId=${_?.chatId} err=${e.message}\n${e.stack}\n`);
       return { success: false, error: e.message };
     }
   });

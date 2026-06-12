@@ -6,24 +6,24 @@
   "author": "Tunerhouse",
   "license": "MIT",
   "scripts": {
-    "start":     "electron .",
-    "dev":       "electron . --dev",
-    "build":     "electron-builder --win --x64",
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
-    "pack":      "electron-builder --dir"
+    "pack": "electron-builder --dir"
   },
   "dependencies": {
-    "whatsapp-web.js": "^1.23.0",
-    "qrcode":          "^1.5.3"
+    "qrcode": "^1.5.3",
+    "whatsapp-web.js": "^1.34.7"
   },
   "devDependencies": {
-    "electron":         "^28.3.3",
+    "electron": "^28.3.3",
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId":       "com.tunerhouse.th-whats",
+    "appId": "com.tunerhouse.th-whats",
     "productName": "TH-WHATS",
-    "copyright":   "Copyright © 2025 Tunerhouse",
+    "copyright": "Copyright © 2025 Tunerhouse",
     "directories": {
       "output": "dist",
       "buildResources": "assets"
@@ -44,26 +44,30 @@
       "target": [
         {
           "target": "nsis",
-          "arch":   ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch":   ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/tray-icon.ico",
       "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
-      "oneClick":              false,
-      "perMachine":            false,
+      "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon":         "assets/tray-icon.ico",
-      "uninstallerIcon":       "assets/tray-icon.ico",
-      "installerHeaderIcon":   "assets/tray-icon.ico",
+      "installerIcon": "assets/tray-icon.ico",
+      "uninstallerIcon": "assets/tray-icon.ico",
+      "installerHeaderIcon": "assets/tray-icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName":          "TH-WHATS",
+      "shortcutName": "TH-WHATS",
       "deleteAppDataOnUninstall": false
     },
     "portable": {

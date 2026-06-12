@@ -92,6 +92,15 @@ function findBrowser() {
       '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
       '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
     );
+  } else if (process.platform === 'linux') {
+    candidates.push(
+      '/usr/bin/brave-browser',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/snap/bin/chromium',
+    );
   }
 
   for (const c of candidates) {
@@ -156,6 +165,10 @@ function buildClient() {
     '--disable-sync',
     '--metrics-recording-only',
     '--mute-audio',
+    '--disable-web-security',
+    '--allow-running-insecure-content',
+    '--ignore-certificate-errors',
+    '--disable-features=IsolateOrigins,site-per-process',
   ];
 
   const puppeteerOpts = {
